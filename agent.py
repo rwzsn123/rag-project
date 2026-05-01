@@ -31,7 +31,7 @@ class AgentService:
     """LangGraph Agent 服务，提供与原 RagService 兼容的调用接口"""
 
     def __init__(self):
-        self.chat_model = ChatTongyi(model_name=config.chat_model_name)
+        self.chat_model = ChatTongyi(model_name=config.chat_model_name, streaming=True)
         self.tools = [search_knowledge, search_web]
         self.agent = create_react_agent(
             model=self.chat_model,
@@ -55,6 +55,16 @@ class AgentService:
     def _content_to_text(content) -> str:
         if isinstance(content, str):
             return content
+        if isinstance(content, list):
+            parts = []
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("text") or item.get("content")
+                    if text:
+                        parts.append(str(text))
+            return "".join(parts)
         return str(content)
 
     def clear_history(self, session_id: str) -> None:
@@ -88,30 +98,33 @@ class AgentService:
         messages = list(history.messages)
         messages.append(HumanMessage(content=user_input))
 
-        final_text = ""
-        emitted_text = ""
-        for event in self.agent.stream(
+        streamed_text = ""
+        for chunk, metadata in self.agent.stream(
             {"messages": messages},
             config=self._get_config(session_id),
-            stream_mode="updates",
+            stream_mode="messages",
         ):
-            if "agent" in event:
-                agent_output = event["agent"]
-                messages = agent_output.get("messages", [])
-                for msg in messages:
-                    if isinstance(msg, AIMessage) and msg.content and not msg.tool_calls:
-                        text = self._content_to_text(msg.content)
-                        if text.startswith(emitted_text):
-                            chunk = text[len(emitted_text):]
-                        else:
-                            chunk = text
-                        if chunk:
-                            yield chunk
-                        final_text = text
-                        emitted_text = text
+            if metadata.get("langgraph_node") != "agent":
+                continue
+            if getattr(chunk, "tool_call_chunks", None) or getattr(chunk, "tool_calls", None):
+                continue
 
-        if final_text:
-            history.add_messages([HumanMessage(content=user_input), AIMessage(content=final_text)])
+            text = self._content_to_text(getattr(chunk, "content", ""))
+            if not text:
+                continue
+
+            if text.startswith(streamed_text):
+                delta = text[len(streamed_text):]
+                streamed_text = text
+            else:
+                delta = text
+                streamed_text += text
+
+            if delta:
+                yield delta
+
+        if streamed_text:
+            history.add_messages([HumanMessage(content=user_input), AIMessage(content=streamed_text)])
 
 
 if __name__ == "__main__":
