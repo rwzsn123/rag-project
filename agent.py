@@ -71,18 +71,23 @@ class AgentService:
         """清空指定会话的持久化消息历史"""
         self._get_history(session_id).clear()
 
+    def add_user_message(self, session_id: str, user_input: str) -> None:
+        """立即保存用户消息，避免页面重跑或切换时丢失输入"""
+        self._get_history(session_id).add_messages([HumanMessage(content=user_input)])
+
     def refresh_knowledge_base(self) -> None:
         """知识库更新后刷新工具层的向量检索服务"""
         tools_module.refresh_vector_service()
 
-    def invoke(self, user_input: str, session_id: str) -> str:
+    def invoke(self, user_input: str, session_id: str, persist_user: bool = True) -> str:
         """同步调用 Agent，返回最终回答文本"""
         tools_module.last_sources = {}
         history = self._get_history(session_id)
         human_message = HumanMessage(content=user_input)
         messages = list(history.messages)
-        messages.append(human_message)
-        history.add_messages([human_message])
+        if persist_user:
+            messages.append(human_message)
+            history.add_messages([human_message])
         result = self.agent.invoke(
             {"messages": messages},
             config=self._get_config(session_id),
@@ -93,14 +98,15 @@ class AgentService:
             history.add_messages([AIMessage(content=answer)])
         return answer
 
-    def stream(self, user_input: str, session_id: str):
+    def stream(self, user_input: str, session_id: str, persist_user: bool = True):
         """流式调用 Agent，yield 文本 token 片段（供 Streamlit write_stream 使用）"""
         tools_module.last_sources = {}
         history = self._get_history(session_id)
         human_message = HumanMessage(content=user_input)
         messages = list(history.messages)
-        messages.append(human_message)
-        history.add_messages([human_message])
+        if persist_user:
+            messages.append(human_message)
+            history.add_messages([human_message])
 
         streamed_text = ""
         for chunk, metadata in self.agent.stream(
