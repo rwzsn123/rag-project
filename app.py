@@ -42,6 +42,5 @@ if not check_password():
 qa_page = st.Page("pages/1_💬_智能问答.py", title="智能问答", icon="💬", default=True)
 kb_page = st.Page("pages/2_📂_知识库管理.py", title="知识库管理", icon="📂")
 
-pages = [qa_page] if st.session_state.get("is_generating") else [qa_page, kb_page]
-pg = st.navigation(pages)
+pg = st.navigation([qa_page, kb_page])
 pg.run()

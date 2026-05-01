@@ -3,6 +3,7 @@ import streamlit as st
 import time
 import uuid
 import agent as agent_service
+import generation_manager
 from file_history import FileChatMessageHistory, delete_history, list_history_sessions
 import re
 
@@ -34,7 +35,13 @@ def load_session_messages(session_id):
             role = "assistant"
         else:
             continue
-        messages.append({"role": role, "content": content_to_text(msg.content)})
+        kwargs = getattr(msg, "additional_kwargs", {}) or {}
+        messages.append({
+            "role": role,
+            "content": content_to_text(msg.content),
+            "job_id": kwargs.get("job_id"),
+            "job_status": kwargs.get("status"),
+        })
     return messages or [welcome_message()]
 
 
@@ -45,13 +52,9 @@ if "agent_service" not in st.session_state:
     st.session_state["agent_service"] = agent_service.AgentService()
 if "message" not in st.session_state:
     st.session_state["message"] = load_session_messages(st.session_state["session_id"])
-if "is_generating" not in st.session_state:
-    st.session_state["is_generating"] = False
 if st.session_state.get("knowledge_base_dirty"):
     st.session_state["agent_service"].refresh_knowledge_base()
     st.session_state["knowledge_base_dirty"] = False
-if st.session_state.get("last_generation_error"):
-    st.error(st.session_state.pop("last_generation_error"))
 
 
 def switch_session(new_session_id):
@@ -67,18 +70,18 @@ def get_session_list():
 
 # ===== 侧边栏 =====
 with st.sidebar:
-    is_generating = st.session_state.get("is_generating", False)
     st.header("⚙️ 设置")
-    if is_generating:
-        st.caption("Agent 正在回复，完成后可切换会话。")
-    if st.button("🔄 刷新知识库", use_container_width=True, disabled=is_generating):
+    if generation_manager.has_active_jobs():
+        st.caption("有回复正在后台生成，可继续操作其他会话。")
+    if st.button("🔄 刷新知识库", use_container_width=True):
         import chromadb
         chromadb.api.client.SharedSystemClient.clear_system_cache()
         st.session_state["agent_service"].refresh_knowledge_base()
         st.success("知识库已刷新！")
         time.sleep(1)
         st.rerun()
-    if st.button("🗑️ 重置对话", use_container_width=True, disabled=is_generating):
+    if st.button("🗑️ 重置对话", use_container_width=True):
+        generation_manager.cancel_session_jobs(st.session_state["session_id"])
         agent_svc = st.session_state["agent_service"]
         agent_svc.clear_history(st.session_state["session_id"])
         st.session_state["message"] = [welcome_message()]
@@ -92,7 +95,7 @@ with st.sidebar:
     st.header("💬 会话管理")
     st.caption(f"当前会话：`{st.session_state['session_id']}`")
 
-    if st.button("➕ 新建会话", use_container_width=True, disabled=is_generating):
+    if st.button("➕ 新建会话", use_container_width=True):
         new_id = str(uuid.uuid4())[:8]
         st.session_state["session_id"] = new_id
         st.session_state["message"] = [welcome_message()]
@@ -109,11 +112,12 @@ with st.sidebar:
             col1, col2 = st.columns([3, 1])
             with col1:
                 label = f"● {sid}（当前）" if is_current else f"○ {sid}"
-                if st.button(label, key=f"switch_{sid}", use_container_width=True, disabled=is_current or is_generating):
+                if st.button(label, key=f"switch_{sid}", use_container_width=True, disabled=is_current):
                     switch_session(sid)
                     st.rerun()
             with col2:
-                if st.button("🗑️", key=f"del_{sid}", use_container_width=True, disabled=is_current or is_generating):
+                if st.button("🗑️", key=f"del_{sid}", use_container_width=True, disabled=is_current):
+                    generation_manager.cancel_session_jobs(sid)
                     delete_history(sid)
                     st.success(f"已删除会话 {sid}")
                     time.sleep(1)
@@ -133,49 +137,32 @@ def extract_cited_sources(response_text, all_sources):
         return list(all_sources.values())
 
 
-st.divider()
-for message in st.session_state["message"]:
-    st.chat_message(message["role"]).write(message["content"])
-    if message.get("sources"):
-        with st.expander(f"📎 引用来源（{len(message['sources'])} 条）"):
-            for src in message["sources"]:
-                st.markdown(f"**📄 {src['source']}** &nbsp; ⏰ {src['time']}")
-                st.caption(src["preview"] + "...")
-                st.divider()
+def render_chat_messages():
+    st.divider()
+    current_messages = load_session_messages(st.session_state["session_id"])
+    st.session_state["message"] = current_messages
+    for message in current_messages:
+        content = message["content"]
+        if message.get("job_status") in {"queued", "running"}:
+            content = content or "正在生成回复..."
+            if message.get("job_status") == "running":
+                content = f"{content}▌"
+        st.chat_message(message["role"]).write(content)
+        if message.get("sources"):
+            with st.expander(f"📎 引用来源（{len(message['sources'])} 条）"):
+                for src in message["sources"]:
+                    st.markdown(f"**📄 {src['source']}** &nbsp; ⏰ {src['time']}")
+                    st.caption(src["preview"] + "...")
+                    st.divider()
 
-prompt = st.chat_input(disabled=st.session_state.get("is_generating", False))
-if prompt and not st.session_state.get("is_generating", False):
+
+if hasattr(st, "fragment") and generation_manager.has_active_jobs(st.session_state["session_id"]):
+    render_chat_messages = st.fragment(run_every="1s")(render_chat_messages)
+render_chat_messages()
+
+prompt = st.chat_input()
+if prompt:
     session_id = st.session_state["session_id"]
     agent_svc = st.session_state["agent_service"]
-    agent_svc.add_user_message(session_id, prompt)
-    st.session_state["message"].append({"role": "user", "content": prompt})
-    st.session_state["pending_prompt"] = prompt
-    st.session_state["pending_session_id"] = session_id
-    st.session_state["is_generating"] = True
+    generation_manager.submit_prompt(agent_svc, session_id, prompt)
     st.rerun()
-
-pending_prompt = st.session_state.get("pending_prompt")
-if pending_prompt:
-    pending_session_id = st.session_state.get("pending_session_id", st.session_state["session_id"])
-    with st.spinner("🤖 Agent 正在思考中..."):
-        agent_svc = st.session_state["agent_service"]
-        try:
-            # 使用 Agent 流式输出
-            res_stream = agent_svc.stream(pending_prompt, pending_session_id, persist_user=False)
-            full_response = st.chat_message("assistant").write_stream(res_stream) or ""
-            # 获取引用来源
-            all_sources = agent_svc.last_sources
-            sources = extract_cited_sources(full_response, all_sources)
-            if full_response:
-                st.session_state["message"].append({
-                    "role": "assistant",
-                    "content": full_response,
-                    "sources": sources,
-                })
-        except Exception as exc:
-            st.session_state["last_generation_error"] = f"回复生成失败：{exc}"
-        finally:
-            st.session_state["is_generating"] = False
-            st.session_state.pop("pending_prompt", None)
-            st.session_state.pop("pending_session_id", None)
-            st.rerun()

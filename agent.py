@@ -52,6 +52,16 @@ class AgentService:
         return FileChatMessageHistory(session_id, config.chat_history_dir)
 
     @staticmethod
+    def _is_unfinished_ai_message(message) -> bool:
+        kwargs = getattr(message, "additional_kwargs", {}) or {}
+        return bool(kwargs.get("job_id")) and kwargs.get("status") != "done"
+
+    def _get_agent_messages(self, session_id: str):
+        """过滤后台生成中的 AI 占位消息，避免把空回复传给模型"""
+        history = self._get_history(session_id)
+        return [message for message in history.messages if not self._is_unfinished_ai_message(message)]
+
+    @staticmethod
     def _content_to_text(content) -> str:
         if isinstance(content, str):
             return content
@@ -75,6 +85,16 @@ class AgentService:
         """立即保存用户消息，避免页面重跑或切换时丢失输入"""
         self._get_history(session_id).add_messages([HumanMessage(content=user_input)])
 
+    def add_user_message_with_ai_placeholder(self, session_id: str, user_input: str, job_id: str) -> None:
+        """保存用户消息，并在其后创建可被后台任务持续更新的 AI 占位消息"""
+        self._get_history(session_id).add_messages([
+            HumanMessage(content=user_input),
+            AIMessage(content="", additional_kwargs={"job_id": job_id, "status": "queued"}),
+        ])
+
+    def update_ai_message(self, session_id: str, job_id: str, content=None, status=None, error=None) -> None:
+        self._get_history(session_id).update_ai_message(job_id, content=content, status=status, error=error)
+
     def refresh_knowledge_base(self) -> None:
         """知识库更新后刷新工具层的向量检索服务"""
         tools_module.refresh_vector_service()
@@ -84,7 +104,7 @@ class AgentService:
         tools_module.last_sources = {}
         history = self._get_history(session_id)
         human_message = HumanMessage(content=user_input)
-        messages = list(history.messages)
+        messages = self._get_agent_messages(session_id)
         if persist_user:
             messages.append(human_message)
             history.add_messages([human_message])
@@ -98,12 +118,12 @@ class AgentService:
             history.add_messages([AIMessage(content=answer)])
         return answer
 
-    def stream(self, user_input: str, session_id: str, persist_user: bool = True):
+    def stream(self, user_input: str, session_id: str, persist_user: bool = True, persist_ai: bool = True):
         """流式调用 Agent，yield 文本 token 片段（供 Streamlit write_stream 使用）"""
         tools_module.last_sources = {}
         history = self._get_history(session_id)
         human_message = HumanMessage(content=user_input)
-        messages = list(history.messages)
+        messages = self._get_agent_messages(session_id)
         if persist_user:
             messages.append(human_message)
             history.add_messages([human_message])
@@ -133,7 +153,7 @@ class AgentService:
             if delta:
                 yield delta
 
-        if streamed_text:
+        if streamed_text and persist_ai:
             history.add_messages([AIMessage(content=streamed_text)])
 
 
