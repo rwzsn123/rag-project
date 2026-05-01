@@ -12,6 +12,7 @@ st.title("💬 智能问答")
 
 
 WELCOME_TEXT = "你好，我是智能客服，有什么可以帮助你的吗？"
+SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 
 def welcome_message():
@@ -22,6 +23,13 @@ def content_to_text(content):
     if isinstance(content, str):
         return content
     return str(content)
+
+
+def activity_label(status):
+    frame = SPINNER_FRAMES[int(time.time() * 10) % len(SPINNER_FRAMES)]
+    if status == "queued":
+        return f"{frame} 排队中"
+    return f"{frame} 正在生成回复"
 
 
 def load_session_messages(session_id):
@@ -142,22 +150,26 @@ def render_chat_messages():
     current_messages = load_session_messages(st.session_state["session_id"])
     st.session_state["message"] = current_messages
     for message in current_messages:
-        content = message["content"]
-        if message.get("job_status") in {"queued", "running"}:
-            content = content or "正在生成回复..."
-            if message.get("job_status") == "running":
-                content = f"{content}▌"
-        st.chat_message(message["role"]).write(content)
-        if message.get("sources"):
-            with st.expander(f"📎 引用来源（{len(message['sources'])} 条）"):
-                for src in message["sources"]:
-                    st.markdown(f"**📄 {src['source']}** &nbsp; ⏰ {src['time']}")
-                    st.caption(src["preview"] + "...")
-                    st.divider()
+        status = message.get("job_status")
+        is_active = status in {"queued", "running"}
+        content = message["content"].rstrip()
+        with st.chat_message(message["role"]):
+            if content:
+                st.write(content)
+            elif is_active:
+                st.write(activity_label(status))
+            if is_active and content:
+                st.caption(activity_label(status))
+            if message.get("sources"):
+                with st.expander(f"📎 引用来源（{len(message['sources'])} 条）"):
+                    for src in message["sources"]:
+                        st.markdown(f"**📄 {src['source']}** &nbsp; ⏰ {src['time']}")
+                        st.caption(src["preview"] + "...")
+                        st.divider()
 
 
 if hasattr(st, "fragment") and generation_manager.has_active_jobs(st.session_state["session_id"]):
-    render_chat_messages = st.fragment(run_every="1s")(render_chat_messages)
+    render_chat_messages = st.fragment(run_every=0.3)(render_chat_messages)
 render_chat_messages()
 
 prompt = st.chat_input()

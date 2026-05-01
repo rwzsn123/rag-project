@@ -9,6 +9,7 @@ _jobs = {}
 _jobs_lock = threading.RLock()
 _queue = queue.Queue()
 _worker_thread = None
+STREAM_WRITE_INTERVAL = 0.1
 
 
 def _ensure_worker():
@@ -117,7 +118,7 @@ def _run_job(job_id):
                 return
             response += chunk
             now = time.monotonic()
-            if now - last_write_at >= 0.25:
+            if now - last_write_at >= STREAM_WRITE_INTERVAL:
                 _set_job_status(job_id, "running", response=response)
                 agent_service.update_ai_message(session_id, job_id, content=response, status="running")
                 last_write_at = now
