@@ -1,7 +1,7 @@
 import os
 import hashlib
 from langchain_chroma import Chroma
-import config_data as config
+from rag_project import config
 from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from datetime import datetime
@@ -49,7 +49,7 @@ def get_string_md5(input_str,encoding='utf-8'):
     return md5_hex
 
 
-class knowledgeBaseService(object):
+class KnowledgeBaseService(object):
     def __init__(self):
         os.makedirs(config.persist_directory,exist_ok=True)
         self.chroma =Chroma(
@@ -134,6 +134,9 @@ class knowledgeBaseService(object):
         self.chroma._collection.update(**kwargs)
         return f"[成功] 已更新文档 {doc_id}"
 if __name__ == '__main__':
-    kb=knowledgeBaseService()
+    kb=KnowledgeBaseService()
     r=kb.upload_by_str("测试","测试.txt")
     print(r)
+
+
+knowledgeBaseService = KnowledgeBaseService

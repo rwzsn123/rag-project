@@ -1,8 +1,15 @@
 import streamlit as st
 #当web页面发生变化时，代码就会重跑一遍，无法保存一些文件
 #from streamlit.runtime.uploaded_file_manager import UploadedFileRec
-from knowledge_base import knowledgeBaseService
-from file_parser import parse_file
+try:
+    from scripts._bootstrap import ensure_project_root
+except ImportError:
+    from _bootstrap import ensure_project_root
+
+ensure_project_root()
+
+from rag_project.knowledge_base import KnowledgeBaseService
+from rag_project.file_parser import parse_file
 from collections import Counter
 import time
 st.title("知识库更新服务")
@@ -13,7 +20,7 @@ uploaded_file = st.file_uploader(
 )
 
 if "service" not in st.session_state:
-    st.session_state.service = knowledgeBaseService()
+    st.session_state.service = KnowledgeBaseService()
 if uploaded_file is not None:
     file_name = uploaded_file.name
     file_type=uploaded_file.type

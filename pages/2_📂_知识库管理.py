@@ -1,7 +1,7 @@
 """知识库管理页面"""
 import streamlit as st
-from knowledge_base import knowledgeBaseService
-from file_parser import parse_file
+from rag_project.knowledge_base import KnowledgeBaseService
+from rag_project.file_parser import parse_file
 from collections import Counter
 import time
 
@@ -14,7 +14,7 @@ uploaded_file = st.file_uploader(
 )
 
 if "service" not in st.session_state:
-    st.session_state.service = knowledgeBaseService()
+    st.session_state.service = KnowledgeBaseService()
 if uploaded_file is not None:
     file_name = uploaded_file.name
     file_type = uploaded_file.type

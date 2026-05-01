@@ -2,9 +2,9 @@
 import streamlit as st
 import time
 import uuid
-import agent as agent_service
-import generation_manager
-from file_history import FileChatMessageHistory, delete_history, list_history_sessions
+from rag_project import agent as agent_service
+from rag_project import generation_manager
+from rag_project.file_history import FileChatMessageHistory, delete_history, list_history_sessions
 import re
 
 

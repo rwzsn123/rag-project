@@ -1,7 +1,7 @@
 [project]
 name = "rag-project"
 version = "0.1.0"
-description = "Add your description here"
+description = "Streamlit RAG customer service assistant with local knowledge base and LangGraph agent."
 requires-python = ">=3.12"
 dependencies = [
     "chardet>=5.2.0",

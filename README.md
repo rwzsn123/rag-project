@@ -86,16 +86,22 @@ uv run streamlit run app.py
 ```text
 .
 ├── app.py                         # Streamlit 多页面入口
-├── agent.py                       # LangGraph Agent 服务
-├── tools.py                       # 知识库检索和联网搜索工具
-├── knowledge_base.py              # 知识库写入、删除、更新
-├── file_parser.py                 # 上传文件解析
-├── file_history.py                # 会话历史持久化
-├── vector_stores.py               # ChromaDB 检索封装
-├── config_data.py                 # 项目配置
+├── rag_project/                   # 核心业务包
+│   ├── agent.py                   # LangGraph Agent 服务
+│   ├── config.py                  # 项目配置
+│   ├── file_history.py            # 会话历史持久化
+│   ├── file_parser.py             # 上传文件解析
+│   ├── generation_manager.py      # 后台生成任务管理
+│   ├── knowledge_base.py          # 知识库写入、删除、更新
+│   ├── tools.py                   # 知识库检索和联网搜索工具
+│   └── vector_store.py            # ChromaDB 检索封装
 ├── pages/
 │   ├── 1_💬_智能问答.py
 │   └── 2_📂_知识库管理.py
+├── scripts/                       # 手动调试和旧版入口脚本
+│   ├── view_db.py
+│   ├── test_agent_manual.py
+│   └── *_legacy.py
 └── pyproject.toml
 ```
 

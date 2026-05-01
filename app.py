@@ -1,7 +1,7 @@
 """RAG 智能客服系统 - 多页面应用入口"""
 import hmac
 import streamlit as st
-import config_data as config
+from rag_project import config
 
 st.set_page_config(
     page_title="RAG 智能客服系统",

@@ -3,10 +3,10 @@ from datetime import datetime
 from langgraph.prebuilt import create_react_agent
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.messages import AIMessage, HumanMessage
-import config_data as config
-from file_history import FileChatMessageHistory
-from tools import search_knowledge, search_web
-import tools as tools_module
+from rag_project import config
+from rag_project.file_history import FileChatMessageHistory
+from rag_project.tools import search_knowledge, search_web
+from rag_project import tools as tools_module
 
 def build_system_prompt():
     """动态生成 System Prompt，注入当前日期时间"""

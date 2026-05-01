@@ -3,7 +3,7 @@ import json
 import threading
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import message_to_dict, messages_from_dict
-import config_data as config
+from rag_project import config
 
 
 _LOCKS = {}

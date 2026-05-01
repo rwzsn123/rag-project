@@ -1,6 +1,7 @@
 import os
 
-_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_PACKAGE_DIR)
 
 
 def _get_int_env(name, default):
@@ -15,9 +16,9 @@ def _get_int_env(name, default):
 
 app_password = os.getenv("RAG_APP_PASSWORD", "rag123")
 
-md5_path = os.getenv("RAG_MD5_PATH", os.path.join(_BASE_DIR, "md5.text"))
-persist_directory = os.getenv("RAG_CHROMA_DIR", os.path.join(_BASE_DIR, "chroma_db"))
-chat_history_dir = os.getenv("RAG_CHAT_HISTORY_DIR", os.path.join(_BASE_DIR, "chat_history"))
+md5_path = os.getenv("RAG_MD5_PATH", os.path.join(_PROJECT_ROOT, "md5.text"))
+persist_directory = os.getenv("RAG_CHROMA_DIR", os.path.join(_PROJECT_ROOT, "chroma_db"))
+chat_history_dir = os.getenv("RAG_CHAT_HISTORY_DIR", os.path.join(_PROJECT_ROOT, "chat_history"))
 collection_name = os.getenv("RAG_COLLECTION_NAME", "rag")
 
 chunk_size = _get_int_env("RAG_CHUNK_SIZE", 800)

@@ -1,8 +1,8 @@
 """Agent 工具定义模块：提供知识库检索和联网搜索工具供 LangGraph Agent 调用"""
 from langchain_core.tools import tool
-from vector_stores import VectorStoreService
+from rag_project.vector_store import VectorStoreService
 from langchain_community.embeddings import DashScopeEmbeddings
-import config_data as config
+from rag_project import config
 
 def _build_vector_service():
     return VectorStoreService(DashScopeEmbeddings(model=config.embedding_model_name))

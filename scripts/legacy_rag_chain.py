@@ -1,11 +1,18 @@
+try:
+    from scripts._bootstrap import ensure_project_root
+except ImportError:
+    from _bootstrap import ensure_project_root
+
+ensure_project_root()
+
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnableWithMessageHistory
-from vector_stores import VectorStoreService
+from rag_project.vector_store import VectorStoreService
 from langchain_community.embeddings import DashScopeEmbeddings
-import config_data as config
+from rag_project import config
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.output_parsers import StrOutputParser
-from file_history import get_history,FileChatMessageHistory
+from rag_project.file_history import get_history, FileChatMessageHistory
 class RagService(object):
     def __init__(self):
         self.vector_service = VectorStoreService(DashScopeEmbeddings(model=config.embedding_model_name))

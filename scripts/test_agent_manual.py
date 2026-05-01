@@ -1,5 +1,12 @@
 """测试 Agent 联网搜索"""
-from agent import AgentService
+try:
+    from scripts._bootstrap import ensure_project_root
+except ImportError:
+    from _bootstrap import ensure_project_root
+
+ensure_project_root()
+
+from rag_project.agent import AgentService
 
 svc = AgentService()
 result = svc.agent.invoke(

@@ -1,6 +1,5 @@
 from langchain_chroma import Chroma
-from langchain_community.chat_models.tongyi import ChatTongyi
-import config_data as config
+from rag_project import config
 class VectorStoreService(object):
     def __init__(self,embedding):
        self.embedding = embedding

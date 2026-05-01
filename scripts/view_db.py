@@ -1,7 +1,14 @@
 """查看 ChromaDB 知识库中的所有文档"""
+try:
+    from scripts._bootstrap import ensure_project_root
+except ImportError:
+    from _bootstrap import ensure_project_root
+
+ensure_project_root()
+
 from langchain_chroma import Chroma
 from langchain_community.embeddings import DashScopeEmbeddings
-import config_data as config
+from rag_project import config
 
 db = Chroma(
     collection_name=config.collection_name,

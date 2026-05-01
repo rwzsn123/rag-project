@@ -2,8 +2,15 @@
 import streamlit as st
 import time
 import uuid
-import agent as agent_service
-import tools as tools_module
+try:
+    from scripts._bootstrap import ensure_project_root
+except ImportError:
+    from _bootstrap import ensure_project_root
+
+ensure_project_root()
+
+from rag_project import agent as agent_service
+from rag_project import tools as tools_module
 
 st.title("智能客服")
 
