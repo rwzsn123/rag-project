@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.streamlit/secrets.toml
+
+chroma_db/
+chat_history/
+md5.text
+
+*.log

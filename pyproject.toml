@@ -1,0 +1,17 @@
+[project]
+name = "rag-project"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "chardet>=5.2.0",
+    "dashscope>=1.25.11",
+    "duckduckgo-search>=7",
+    "langchain-chroma>=1.1.0",
+    "langchain-community>=0.4.1",
+    "langchain-text-splitters>=1.1.0",
+    "langgraph>=0.2.0",
+    "pypdf>=5.0.0",
+    "python-docx>=1.1.0",
+    "streamlit>=1.54.0",
+]
