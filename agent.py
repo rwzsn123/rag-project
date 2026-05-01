@@ -79,8 +79,10 @@ class AgentService:
         """同步调用 Agent，返回最终回答文本"""
         tools_module.last_sources = {}
         history = self._get_history(session_id)
+        human_message = HumanMessage(content=user_input)
         messages = list(history.messages)
-        messages.append(HumanMessage(content=user_input))
+        messages.append(human_message)
+        history.add_messages([human_message])
         result = self.agent.invoke(
             {"messages": messages},
             config=self._get_config(session_id),
@@ -88,15 +90,17 @@ class AgentService:
         ai_messages = [m for m in result["messages"] if isinstance(m, AIMessage) and m.content]
         answer = self._content_to_text(ai_messages[-1].content) if ai_messages else ""
         if answer:
-            history.add_messages([HumanMessage(content=user_input), AIMessage(content=answer)])
+            history.add_messages([AIMessage(content=answer)])
         return answer
 
     def stream(self, user_input: str, session_id: str):
         """流式调用 Agent，yield 文本 token 片段（供 Streamlit write_stream 使用）"""
         tools_module.last_sources = {}
         history = self._get_history(session_id)
+        human_message = HumanMessage(content=user_input)
         messages = list(history.messages)
-        messages.append(HumanMessage(content=user_input))
+        messages.append(human_message)
+        history.add_messages([human_message])
 
         streamed_text = ""
         for chunk, metadata in self.agent.stream(
@@ -124,7 +128,7 @@ class AgentService:
                 yield delta
 
         if streamed_text:
-            history.add_messages([HumanMessage(content=user_input), AIMessage(content=streamed_text)])
+            history.add_messages([AIMessage(content=streamed_text)])
 
 
 if __name__ == "__main__":
